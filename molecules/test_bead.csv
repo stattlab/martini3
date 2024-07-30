@@ -1,0 +1,7 @@
+Index,Bead,Rel Position x,Rel Position y,Rel Position z, charge
+1,Q1,0.0,0.0,0.0,1
+2,Q5,0.0,0.0,1,-1
+3,SN4a,1.0,0,1
+4,TN4a,2,0,1
+5,C1,2,1,1
+6,C4h,2,2,1

@@ -1,0 +1,61 @@
+Martini for HOOMD: 
+
+My implementation to streamline initializing a simulation parameterized with the Martini CG force field.
+
+This works as a python package. Use conda develop -u path to add it to your conda environment
+
+Usage for Simulation:
+1. Initialize contents
+2. Add molecules to contents
+3. Run init_cell with contents
+4. Either run simulation, or, in a new file, use forces_from_gsd to run from the initialized gsd
+
+Usage for Development:
+
+Adding molecules:
+1. Add _bead.csv and _bonds.csv in martini the same format as they are implemented (note: bead is 1 indexed and bonds in 0 indexed)
+2. Write add_*/make_* molecule to molecules.py following the given format 
+3. Kaboom
+
+Adding polymers:
+1. Be smart. Polymers.py constructs the _bead.csv and _bonds.csv for several types of polymers which I have had to code. Either work from that or make your own script to do this.
+
+A summary of the components:
+
+force_fields.py
+- Initializes or reinitializes hoomd force fields
+- Currently supports bond harmonic, angle harmonic, OPLS dihedral, improper harmonic, and rigid body cholesterol 
+
+init_cell.py
+- Given a contents object, creates a gsd with all components having correct bonds angles and impropers
+- Saves bonds.csv, angles.csv ... etc, for rerun
+
+particles.py
+- Create a particles type
+- Initialize leonard jones interactions across particle types and masses
+
+molecules.py
+- Creates bond/angles/rigid bodies/dihedral/whatever types 
+- Create molecule type - everything hoomd needs to run
+- Creates contents, which is a list of molecules that keeps track of how many angles and bonds were added and prevents duplicate bonds from being added.
+- Has functions to add specific molecules to contents.
+
+q_adj.py
+- Martini wants us to change the LJ potentials if beads are interacting with charged beads. This holds the parameters that define how that shift happens. This is handled in particles.py
+
+polymers.py
+- For polymers that I have needed, create _bonds and _bead.csv's for polymers given number of repeats, sequences, block-copolymers, slabs, etc.
+
+Some notes on issues you may be experiencing:
+1. There is a race condition if you try to start multiple simulations at the same time that build the same polymer AND that polymer has not been previously defined, hell breaks loose
+
+Things on my list for development:
+1. Support for combined bending and torsion potentials
+2. Support for arbitrary rotation of cholesterol molecules on initialization (and resulting updates of the orientation quaternion)
+3. More options for initial configuration of polymers (as opposed to my helicies)
+
+Things that will be fixed in the next version:
+1. _bead.csv and _bonds.csv will be a more intuitive structure
+2. Generalized rigid body support
+3. Support for all HOOMD bond, angle, and dihedral potentials
+4. Support for custom masses instead of Martini Default masses
