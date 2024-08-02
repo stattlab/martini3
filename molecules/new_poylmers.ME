@@ -1,0 +1,45 @@
+Idea for architecture of new polymers.py class such that it works with martini3.
+
+Monomers data files
+- Bead types
+- Inner bonds/angles
+- Link bonds/angles
+
+Class monomers:
+- list of beads with assigned indexes (relative)
+- Inner bonds/angles - potential and indexes
+- link bonds/angles - potential and index to first bead in bond or first/second bead in bond/angl
+
+  def make_monomer(file_name):
+    returns monomer
+
+
+
+Class Polymer:
+- Tuple (monomer, [next monomer(s)])
+
+  
+  def make_homopolymer(N, polymer_name):
+    sequence = "{name}"*N
+    polymer = make_sequence():
+    return polymer
+
+  def make_BCP(Na,Nb,polymer_namea, polymer_name_B):
+    sequenec = "{namea}"*Na + "{nameb}*Nb
+    polymer = make_sequence():
+
+  def make_sequence(sequence)
+    last_mer = make_monomer(sequence[0])
+    polymer = (, [last_mer])
+    for monomer in sequence:
+        monomer = make_monomer()
+        last_mer = (last_mer, [monomer]
+
+def polymer_2_csv(polymer,file_path, conformation):
+
+  place polymer[0] at position with orrect bonds, indexes in csvs
+  place link bonds assosciated from polymer[0] to all polymer[1]
+  for mer in polymer[1]:
+    polymer_2_csv(mer,file_path,conformation)
+
+  
