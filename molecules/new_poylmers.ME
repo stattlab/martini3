@@ -38,8 +38,9 @@ Class Polymer:
 def polymer_2_csv(polymer,file_path, conformation):
 
   place polymer[0] at position with orrect bonds, indexes in csvs
-  place link bonds assosciated from polymer[0] to all polymer[1]
   for mer in polymer[1]:
     polymer_2_csv(mer,file_path,conformation)
+    place link bonds assosciated from polymer[0] to all polymer[1]
+
 
   
