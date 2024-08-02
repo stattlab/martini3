@@ -33,7 +33,8 @@ Class Polymer:
     polymer = (, [last_mer])
     for monomer in sequence:
         monomer = make_monomer()
-        last_mer = (last_mer, [monomer]
+        last_mer = (last_mer, [monomer])
+    return polymer
 
 def polymer_2_csv(polymer,file_path, conformation):
 
