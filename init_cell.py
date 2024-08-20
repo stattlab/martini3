@@ -10,6 +10,11 @@ import gsd.hoomd
 # 4. for all bond.idx, angle.idx, dihedral.idx, create the Potentials
 # 5. For LJ, coulomb, iter over particle.types
 
+def wrap_pbc(box,x):
+        np_box = np.asarray(box[0:3])
+        delta = np.where(x > 0.5 * np_box, x - np_box, x)
+        delta = np.where(delta < - 0.5 * np_box, np_box + delta, delta)
+        return delta
 
 def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
     """
@@ -35,6 +40,20 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
     # initialize frame
     frame = gsd.hoomd.Frame()
 
+    # box set-up
+    try:
+        box = []
+        box.append(float(box_size[0]))
+        box.append(float(box_size[1]))
+        box.append(float(box_size[2]))
+        box.append(float(0))
+        box.append(float(0))
+        box.append(float(0))
+        frame.configuration.box = box
+    except:
+        L = box_size
+        frame.configuration.box = [L, L, L, 0, 0, 0]
+
     # types set-up (used for instantiating coulomb and lj potentials where interactons are based on the types of beads present)
     types = particles.init_particles(contents.bead_types)
     name_list = [particle.name for particle in types]
@@ -53,12 +72,12 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
     orientations = []
     moment_inertias = []
     for molecule in contents.contents:
-        for bead in molecule.types:
+        for bead in molecule.bead_types:
             for i in index_list:
                 if bead == name_list[i]:
                     type_id.append(i)
                     mass_pairing.append(mass_list[i])
-        for position in molecule.position:
+        for position in molecule.positions:
             positions.append(position)
         for charge in molecule.charges:
             charges.append(charge)
@@ -70,7 +89,7 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
         for moment_inertia in molecule.moment_inertia:
             moment_inertias.append(moment_inertia)
     frame.particles.N = len(positions)
-    frame.particles.position = positions
+    frame.particles.position = wrap_pbc(frame.configuration.box,positions)
     frame.particles.typeid = type_id
     frame.particles.types = name_list
     frame.particles.mass = mass_pairing
@@ -134,20 +153,6 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
     frame.impropers.types = improper_dihedral_types
     frame.impropers.typeid = improper_dihedral_type_id
     frame.impropers.group = improper_dihedral_group
-
-    # box set-up
-    try:
-        box = []
-        box.append(float(box_size[0]))
-        box.append(float(box_size[1]))
-        box.append(float(box_size[2]))
-        box.append(float(0))
-        box.append(float(0))
-        box.append(float(0))
-        frame.configuration.box = box
-    except:
-        L = box_size
-        frame.configuration.box = [L, L, L, 0, 0, 0]
 
     with gsd.hoomd.open(name=name + file_name + ".gsd", mode="w") as f:
         f.append(frame)
