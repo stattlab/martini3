@@ -460,15 +460,15 @@ def forces_from_gsd(path, gsd_name):
     initialize all potentials using functions written above. also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
 
     Args:
-      path (string): path to tfile where the gsd is
-      gsd_name (string): gsd file ame
+      path (string): path to file where the gsd is
+      gsd_name (string): gsd file name
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
       hoomd.md.pair.ReactionField: Contains all Coulomb pair potentials present in simulation.
       hoomd.md.bond.Harmonic: Contains all bond  potentials present in simulation.
       hoomd.md.angle.Harmonic: Contains angle dihedral  potentials present in simulation.
-      hoomd.md.dihedral.OPLS: Contains all ddihedral  potentials present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedral  potentials present in simulation.
       hoomd.md.improper.Harmonic: Contains all improper  potentials present in simulation.
       hoomd.md.constrain.Rigid: Contains all improper  potentials present in simulation.
     """
