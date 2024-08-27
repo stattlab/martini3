@@ -456,7 +456,7 @@ def init_all_potentials(types, contents, name, pair_on, return_dpd=False):
       contents (list of molecules): List of all molecules in simulation.
       name (string): Path to file where csv's are stored
       pair_on (bool): if pair_on = false, do not compute the pair potentials (saves a few seconds if not needed)
-      return_dpd (bool): if True, init_all_potentials will also return a hoomd.md.pair.DPD
+      return_dpd (bool): if True, will also return a hoomd.md.pair.DPD
                     potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
@@ -497,7 +497,7 @@ def forces_from_gsd(path, gsd_name, return_dpd=False):
     Args:
       path (string): path to file where the gsd is
       gsd_name (string): gsd file name
-      return_dpd (bool): if True, init_all_potentials will also return a hoomd.md.pair.DPD
+      return_dpd (bool): if True, will also return a hoomd.md.pair.DPD
                     potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
