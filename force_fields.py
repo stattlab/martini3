@@ -7,6 +7,33 @@ import numpy as np
 import csv
 import gsd.hoomd
 
+def init_dpd_potentials(types, cell):
+    """
+    initialize dpd potentials of all types of beads in your simulation
+        according to the sigma of Martini3 specifications. All pairs have an interaction 
+        strength of 20, gamma 4.5, and assumes thermostat temperature of 1.0
+    
+    Useful when relaxing a high energy/random state
+
+    Args:
+      types (list of Particles): List of all particles types in simulation.
+      cell (hoomd neighborlist): HOOMD neighborlist
+
+    Returns:
+      hoomd.md.pair.dpd: Pair potential between all particle types.
+    """
+    dpd = hoomd.md.pair.DPD(nlist=cell,kT=1.0)
+
+    for i in range(len(types)):
+        for j in range(len(types)):
+            particle_a = types[i]
+            particle_b = types[j]
+            dpd.params[(particle_a.name, particle_b.name)] = dict(
+                A=20, gamma=4.5,
+            )
+            dpd.r_cut[(particle_a.name, particle_b.name)] = \
+                                    particle_a.lj_params[particle_b.name][0]  # nm
+    return dpd
 
 def init_lj_potentials(types, cell):
     """
@@ -420,7 +447,7 @@ def make_rigid():
     return rigid
 
 
-def init_all_potentials(types, contents, name, pair_on):
+def init_all_potentials(types, contents, name, pair_on, return_dpd=False):
     """
     initialize all potentials using functions written above. also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
 
@@ -429,15 +456,18 @@ def init_all_potentials(types, contents, name, pair_on):
       contents (list of molecules): List of all molecules in simulation.
       name (string): Path to file where csv's are stored
       pair_on (bool): if pair_on = false, do not compute the pair potentials (saves a few seconds if not needed)
+      return_dpd (bool): if True, init_all_potentials will also return a hoomd.md.pair.DPD
+                    potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
       hoomd.md.pair.ReactionField: Contains all Coulomb pair potentials present in simulation.
-      hoomd.md.bond.Harmonic: Contains all bond  potentials present in simulation.
-      hoomd.md.angle.Harmonic: Contains angle dihedral  potentials present in simulation.
-      hoomd.md.dihedral.OPLS: Contains all ddihedral  potentials present in simulation.
-      hoomd.md.improper.Harmonic: Contains all improper  potentials present in simulation.
-      hoomd.md.constrain.Rigid: Contains all improper  potentials present in simulation.
+      hoomd.md.bond.Harmonic: Contains all bond potentials present in simulation.
+      hoomd.md.angle.Harmonic: Contains angle potentials present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedral potentials present in simulation.
+      hoomd.md.improper.Harmonic: Contains all improper potentials present in simulation.
+      hoomd.md.constrain.Rigid: Contains all improper potentials present in simulation.
+      hoomd.md.pair.DPD: Contains all DPD pair potentials present in simulation, based on LJ parameters.
 
     """
     cell = hoomd.md.nlist.Cell(buffer=0.4,exclusions = ('bond','body'))
@@ -452,25 +482,33 @@ def init_all_potentials(types, contents, name, pair_on):
     dihedral_bonding = init_dihedrals(contents, name)
     improper_dihedral_bonding = init_improper_dihedrals(contents, name)
     rigid = make_rigid()
-    return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
+    if (return_dpd):
+        dpd = init_dpd_potentials(types,cell)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid,dpd
+    else:
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
 
 
-def forces_from_gsd(path, gsd_name):
+def forces_from_gsd(path, gsd_name, return_dpd=False):
     """
-    initialize all potentials using functions written above. also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
+    initialize all potentials using functions written above.
+    also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
 
     Args:
       path (string): path to file where the gsd is
       gsd_name (string): gsd file name
+      return_dpd (bool): if True, init_all_potentials will also return a hoomd.md.pair.DPD
+                    potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
       hoomd.md.pair.ReactionField: Contains all Coulomb pair potentials present in simulation.
-      hoomd.md.bond.Harmonic: Contains all bond  potentials present in simulation.
-      hoomd.md.angle.Harmonic: Contains angle dihedral  potentials present in simulation.
-      hoomd.md.dihedral.OPLS: Contains all dihedral  potentials present in simulation.
-      hoomd.md.improper.Harmonic: Contains all improper  potentials present in simulation.
-      hoomd.md.constrain.Rigid: Contains all improper  potentials present in simulation.
+      hoomd.md.bond.Harmonic: Contains all bond potentials present in simulation.
+      hoomd.md.angle.Harmonic: Contains angle potentials present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedral potentials present in simulation.
+      hoomd.md.improper.Harmonic: Contains all improper potentials present in simulation.
+      hoomd.md.constrain.Rigid: Contains all improper potentials present in simulation.
+      hoomd.md.pair.DPD: Contains all DPD pair potentials present in simulation, based on LJ parameters.
     """
     gsd_path = path + gsd_name
     bonds_path = path + "bonds.csv"
@@ -489,5 +527,8 @@ def forces_from_gsd(path, gsd_name):
     dihedral_bonding = read_dihedrals(dihedrals_path)
     improper_dihedral_bonding = read_improper_dihedrals(improper_dihedrals_path)
     rigid = make_rigid()
-
-    return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
+    if (return_dpd):
+        dpd = init_dpd_potentials(particle_types,cell)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid,dpd
+    else:
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
