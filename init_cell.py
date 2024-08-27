@@ -16,7 +16,7 @@ def wrap_pbc(box,x):
         delta = np.where(delta < - 0.5 * np_box, np_box + delta, delta)
         return delta
 
-def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
+def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init", return_dpd=False):
     """
     initialize a simulation given the list of beads to place into it with correct bonding and nonbonding potentials.
 
@@ -26,6 +26,8 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
       box_size (int/[a,b,c]): if int, square box. Otherwise, the box lengths. Only supports square boxes.
       pair_on (bool): if pair_on = false, do not compute the pair potentials (saves a few seconds if not needed)
       file_name: name of saved gsd
+      return_dpd (bool): if True, will also return a hoomd.md.pair.DPD
+          potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
@@ -157,11 +159,22 @@ def init_cell(contents, name, box_size=20, pair_on=True,file_name = "init"):
     with gsd.hoomd.open(name=name + file_name + ".gsd", mode="w") as f:
         f.append(frame)
 
-    (
-        lj,
-        coulomb,
-        bond_harmonic,
-        angle_bonding,
-        dihedral_bonding, improper_dihedral_bonding,rigid
-    ) = force_fields.init_all_potentials(types, contents, name, pair_on)
-    return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
+    if return_dpd:
+        (
+            lj,
+            coulomb,
+            bond_harmonic,
+            angle_bonding,
+            dihedral_bonding, improper_dihedral_bonding,rigid,
+            dpd,
+        ) = force_fields.init_all_potentials(types, contents, name, pair_on, return_dpd)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid,dpd
+    else:
+        (
+            lj,
+            coulomb,
+            bond_harmonic,
+            angle_bonding,
+            dihedral_bonding, improper_dihedral_bonding,rigid,
+        ) = force_fields.init_all_potentials(types, contents, name, pair_on, return_dpd)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
