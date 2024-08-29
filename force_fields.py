@@ -32,7 +32,7 @@ def init_dpd_potentials(types, cell):
                 A=20, gamma=4.5,
             )
             dpd.r_cut[(particle_a.name, particle_b.name)] = \
-                                    particle_a.lj_params[particle_b.name][0]  # nm
+                                    particle_a.lj_params[particle_b.name][0]*2**(1/6)  # nm
     return dpd
 
 def init_lj_potentials(types, cell):
@@ -285,7 +285,7 @@ def init_dihedrals(contents, name):
       name (string): path to folder where gsd is saved.
 
     Returns:
-      hoomd.md.diheadral.Periodic: Contains all dihedrals present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedrals present in simulation.
     """
     dihedral_set = set()
     dihedral_bonding = hoomd.md.dihedral.OPLS()
