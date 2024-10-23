@@ -54,6 +54,7 @@ def init_lj_potentials(types, cell):
             particle_a = types[i]
             particle_b = types[j]
 
+            '''
             # Adjust for Q bead interactions if one of the beads is Q
             if (particle_a.lj_params[particle_b.name][0] !=0) and "Q" in (particle_a.name) and "Q" not in (particle_b.name):
                 if q_adj.eps_b.get(particle_b.name) != None:
@@ -87,7 +88,8 @@ def init_lj_potentials(types, cell):
                 eps_inside_c1 = q_adj.eps_c1.get(a_name).get(b_size)
                 p_qb = q_adj.p_qb.get(a_size).get(b_size)
 
-                sigma_qw = particle_a.lj_params["W"][0]
+                # sigma_qw = particle_a.lj_params["W"][0]
+                sigma_qw = particles.lj_lookup(particle_a.name,"W")['W'][0]
                 sigma_qb = particle_a.lj_params[particle_b.name][0]
 
                 eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
@@ -125,7 +127,7 @@ def init_lj_potentials(types, cell):
                         eps_b = q_adj.eps_b.get(particle_a.name[1:3])
                     else:
                         print(
-                            "error lipid.py line 78 idk what would cause this case but writing this "
+                            "error force_fields.py line 78 idk what would cause this case but writing this "
                         )
 
                 # This line assumes that particle b is a Q bead and not a D bead
@@ -145,7 +147,8 @@ def init_lj_potentials(types, cell):
                 eps_inside_c1 = q_adj.eps_c1.get(b_name).get(a_size)
                 p_qb = q_adj.p_qb.get(b_size).get(a_size)
 
-                sigma_qw = particle_b.lj_params["W"][0]
+                # sigma_qw = particle_b.lj_params["W"][0]
+                sigma_qw = particles.lj_lookup(particle_b.name,"W")['W'][0]
                 sigma_qb = particle_b.lj_params[particle_a.name][0]
 
                 eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
@@ -171,11 +174,12 @@ def init_lj_potentials(types, cell):
                 )
                 lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
             else:
-                lj.params[(particle_a.name, particle_b.name)] = dict(
-                    epsilon=particle_a.lj_params[particle_b.name][1],
-                    sigma=particle_a.lj_params[particle_b.name][0],
-                )
-                lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
+            '''
+            lj.params[(particle_a.name, particle_b.name)] = dict(
+                epsilon=particle_a.lj_params[particle_b.name][1],
+                sigma=particle_a.lj_params[particle_b.name][0],
+            )
+            lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
     return lj
 
 
@@ -277,8 +281,10 @@ def init_angles(contents, name):
 
 def init_dihedrals(contents, name):
     """
-    initialize the OPLS dihedral potentials of all angles present in simulation
-    according to the Martini3 specifications. also saves iddentities of dihedrals to dihedrals.csv
+    initialize the dihedral potentials of all angles present in simulation
+    according to the Martini3 specifications. also saves identities of dihedrals to dihedrals.csv
+    Chooses between OPLS and Combined Bending-Torsion depending on the number of
+    parameters
 
     Args:
       contents (list of molecules): List of all molecules in simulation.
@@ -286,25 +292,57 @@ def init_dihedrals(contents, name):
 
     Returns:
       hoomd.md.dihedral.OPLS: Contains all dihedrals present in simulation.
+      OR
+      hoomd.azplugins.dihedral.BendingTorsion: Contains all dihedrals present in simulation.
     """
-    dihedral_set = set()
-    dihedral_bonding = hoomd.md.dihedral.OPLS()
+    opls_dihedral_set = set()
+    opls_dihedral_bonding = hoomd.md.dihedral.OPLS()
+    cbt_dihedral_set = set()
+    cbt_dihedral_bonding = hoomd.azplugins.dihedral.BendingTorsion()
     for molecule in contents.contents:
         for dihedral in molecule.dihedrals:
-            if type(dihedral_bonding.params[str(dihedral.idx)].get("k1")) != type(10):
-                dihedral_bonding.params[str(dihedral.idx)] = dict(
-                    k1=dihedral.k1, k2=dihedral.k2, k3=dihedral.k3, k4=dihedral.k4
+            if 'k1' in dihedral.param_dict.keys():
+                #OPLS dihedral
+                opls_dihedral_bonding.params[str(dihedral.idx)] = dihedral.param_dict
+                params = list(dihedral.param_dict.values())
+                params.insert(0,dihedral.idx)
+                opls_dihedral_set.add(
+                    tuple(params)
                 )
-                dihedral_set.add(
-                    (dihedral.idx, dihedral.k1, dihedral.k2, dihedral.k3, dihedral.k4)
+            else:
+                #CBT dihedral
+                cbt_dihedral_bonding.params[str(dihedral.idx)] = dihedral.param_dict
+                params = list(dihedral.param_dict.values())
+                params.insert(0,dihedral.idx)
+                cbt_dihedral_set.add(
+                    tuple(params)
                 )
-    with open(name + "dihedrals.csv", "w") as file:
-        writer = csv.writer(file)
-        for dihedral in dihedral_set:
-            writer.writerow(
-                [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
-            )
-    return dihedral_bonding
+            # if type(dihedral_bonding.params[str(dihedral.idx)].get("k1")) != type(10):
+            #     dihedral_bonding.params[str(dihedral.idx)] = dict(
+            #         k1=dihedral.k1, k2=dihedral.k2, k3=dihedral.k3, k4=dihedral.k4
+            #     )
+            #     dihedral_set.add(
+            #         (dihedral.idx, dihedral.k1, dihedral.k2, dihedral.k3, dihedral.k4)
+            #     )
+    if len(opls_dihedral_set) > 0:
+        with open(name + "dihedrals.csv", "w") as file:
+            writer = csv.writer(file)
+            for dihedral in opls_dihedral_set:
+                writer.writerow(
+                    # [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
+                    dihedral
+                )
+        return opls_dihedral_bonding
+    elif len(cbt_dihedral_set) > 0:
+        with open(name + "dihedrals.csv", "w") as file:
+            writer = csv.writer(file)
+            for dihedral in cbt_dihedral_set:
+                writer.writerow(
+                    # [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
+                    dihedral
+                )
+        return cbt_dihedral_bonding
+    # return dihedral_bonding
 
 def init_improper_dihedrals(contents, name):
     """
@@ -383,22 +421,48 @@ def read_angles(angle_path):
 
 def read_dihedrals(dihedral_path):
     """
-    read the angled potentials of all angles present in simulation
+    read the dihedral potentials of all angles present in simulation
     according to the Martini3 specifications
 
     Args:
       dihedral_path (string): path to dihedral.csv file.
 
     Returns:
-      hoomd.md.diheadral.Periodic: Contains all dihedrals present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedrals present in simulation.
+      OR
+      hoomd.azplugins.dihedral.BendingTorsion
     """
-    dihedral_bonding = hoomd.md.dihedral.OPLS()
     with open(dihedral_path, "r") as file:
         reader = csv.reader(file)
+        #find out what type of dihedrals to use based only on the length of the first line
         for row in reader:
-            dihedral_bonding.params[str(row[0])] = dict(
-                k1=row[1], k2=row[2], k3=row[3], k4=row[4]
-            )
+            if len(row) - 1 == 6:
+                print("initializing a hoomd.azplugins.dihedral.BendingTorsion object")
+                dihedral_bonding = hoomd.azplugins.dihedral.BendingTorsion()
+            elif len(row) - 1 == 4:
+                print("initializing a hoomd.md.dihedral.OPLS object")
+                dihedral_bonding = hoomd.md.dihedral.OPLS()
+            else:
+                print("ERROR in force_fields.py 1")
+                exit(2)
+            break
+    
+    with open(dihedral_path, "r") as file:
+        reader = csv.reader(file)
+        #parameterize the dihedral types in the hoomd dihedral object made above
+        for row in reader:
+            #6 parameters for CBT
+            if len(row) - 1 == 6:
+                dihedral_bonding.params[str(row[0])] = dict(
+                    k_phi=row[1],a0=row[2],a1=row[3],
+                    a2=row[4],a3=row[5],a4=row[6])
+            elif len(row) - 1 == 4: #4 parameters for OPLS
+                dihedral_bonding.params[str(row[0])] = dict(
+                    k1=row[1], k2=row[2], k3=row[3], k4=row[4]
+                )
+            else:
+                print("ERROR in force_fields.py 2")
+                exit(3)
     return dihedral_bonding
 
 def read_improper_dihedrals(improper_dihedral_path):
