@@ -7,6 +7,33 @@ import numpy as np
 import csv
 import gsd.hoomd
 
+def init_dpd_potentials(types, cell):
+    """
+    initialize dpd potentials of all types of beads in your simulation
+        according to the sigma of Martini3 specifications. All pairs have an interaction 
+        strength of 20, gamma 4.5, and assumes thermostat temperature of 1.0
+    
+    Useful when relaxing a high energy/random state
+
+    Args:
+      types (list of Particles): List of all particles types in simulation.
+      cell (hoomd neighborlist): HOOMD neighborlist
+
+    Returns:
+      hoomd.md.pair.dpd: Pair potential between all particle types.
+    """
+    dpd = hoomd.md.pair.DPD(nlist=cell,kT=1.0)
+
+    for i in range(len(types)):
+        for j in range(len(types)):
+            particle_a = types[i]
+            particle_b = types[j]
+            dpd.params[(particle_a.name, particle_b.name)] = dict(
+                A=20, gamma=4.5,
+            )
+            dpd.r_cut[(particle_a.name, particle_b.name)] = \
+                                    particle_a.lj_params[particle_b.name][0]*2**(1/6)  # nm
+    return dpd
 
 def init_lj_potentials(types, cell):
     """
@@ -27,6 +54,7 @@ def init_lj_potentials(types, cell):
             particle_a = types[i]
             particle_b = types[j]
 
+            '''
             # Adjust for Q bead interactions if one of the beads is Q
             if (particle_a.lj_params[particle_b.name][0] !=0) and "Q" in (particle_a.name) and "Q" not in (particle_b.name):
                 if q_adj.eps_b.get(particle_b.name) != None:
@@ -60,7 +88,8 @@ def init_lj_potentials(types, cell):
                 eps_inside_c1 = q_adj.eps_c1.get(a_name).get(b_size)
                 p_qb = q_adj.p_qb.get(a_size).get(b_size)
 
-                sigma_qw = particle_a.lj_params["W"][0]
+                # sigma_qw = particle_a.lj_params["W"][0]
+                sigma_qw = particles.lj_lookup(particle_a.name,"W")['W'][0]
                 sigma_qb = particle_a.lj_params[particle_b.name][0]
 
                 eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
@@ -98,7 +127,7 @@ def init_lj_potentials(types, cell):
                         eps_b = q_adj.eps_b.get(particle_a.name[1:3])
                     else:
                         print(
-                            "error lipid.py line 78 idk what would cause this case but writing this "
+                            "error force_fields.py line 78 idk what would cause this case but writing this "
                         )
 
                 # This line assumes that particle b is a Q bead and not a D bead
@@ -118,7 +147,8 @@ def init_lj_potentials(types, cell):
                 eps_inside_c1 = q_adj.eps_c1.get(b_name).get(a_size)
                 p_qb = q_adj.p_qb.get(b_size).get(a_size)
 
-                sigma_qw = particle_b.lj_params["W"][0]
+                # sigma_qw = particle_b.lj_params["W"][0]
+                sigma_qw = particles.lj_lookup(particle_b.name,"W")['W'][0]
                 sigma_qb = particle_b.lj_params[particle_a.name][0]
 
                 eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
@@ -144,11 +174,12 @@ def init_lj_potentials(types, cell):
                 )
                 lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
             else:
-                lj.params[(particle_a.name, particle_b.name)] = dict(
-                    epsilon=particle_a.lj_params[particle_b.name][1],
-                    sigma=particle_a.lj_params[particle_b.name][0],
-                )
-                lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
+            '''
+            lj.params[(particle_a.name, particle_b.name)] = dict(
+                epsilon=particle_a.lj_params[particle_b.name][1],
+                sigma=particle_a.lj_params[particle_b.name][0],
+            )
+            lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
     return lj
 
 
@@ -250,34 +281,68 @@ def init_angles(contents, name):
 
 def init_dihedrals(contents, name):
     """
-    initialize the OPLS dihedral potentials of all angles present in simulation
-    according to the Martini3 specifications. also saves iddentities of dihedrals to dihedrals.csv
+    initialize the dihedral potentials of all angles present in simulation
+    according to the Martini3 specifications. also saves identities of dihedrals to dihedrals.csv
+    Chooses between OPLS and Combined Bending-Torsion depending on the number of
+    parameters
 
     Args:
       contents (list of molecules): List of all molecules in simulation.
       name (string): path to folder where gsd is saved.
 
     Returns:
-      hoomd.md.diheadral.Periodic: Contains all dihedrals present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedrals present in simulation.
+      OR
+      hoomd.azplugins.dihedral.BendingTorsion: Contains all dihedrals present in simulation.
     """
-    dihedral_set = set()
-    dihedral_bonding = hoomd.md.dihedral.OPLS()
+    opls_dihedral_set = set()
+    opls_dihedral_bonding = hoomd.md.dihedral.OPLS()
+    cbt_dihedral_set = set()
+    cbt_dihedral_bonding = hoomd.azplugins.dihedral.BendingTorsion()
     for molecule in contents.contents:
         for dihedral in molecule.dihedrals:
-            if type(dihedral_bonding.params[str(dihedral.idx)].get("k1")) != type(10):
-                dihedral_bonding.params[str(dihedral.idx)] = dict(
-                    k1=dihedral.k1, k2=dihedral.k2, k3=dihedral.k3, k4=dihedral.k4
+            if 'k1' in dihedral.param_dict.keys():
+                #OPLS dihedral
+                opls_dihedral_bonding.params[str(dihedral.idx)] = dihedral.param_dict
+                params = list(dihedral.param_dict.values())
+                params.insert(0,dihedral.idx)
+                opls_dihedral_set.add(
+                    tuple(params)
                 )
-                dihedral_set.add(
-                    (dihedral.idx, dihedral.k1, dihedral.k2, dihedral.k3, dihedral.k4)
+            else:
+                #CBT dihedral
+                cbt_dihedral_bonding.params[str(dihedral.idx)] = dihedral.param_dict
+                params = list(dihedral.param_dict.values())
+                params.insert(0,dihedral.idx)
+                cbt_dihedral_set.add(
+                    tuple(params)
                 )
-    with open(name + "dihedrals.csv", "w") as file:
-        writer = csv.writer(file)
-        for dihedral in dihedral_set:
-            writer.writerow(
-                [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
-            )
-    return dihedral_bonding
+            # if type(dihedral_bonding.params[str(dihedral.idx)].get("k1")) != type(10):
+            #     dihedral_bonding.params[str(dihedral.idx)] = dict(
+            #         k1=dihedral.k1, k2=dihedral.k2, k3=dihedral.k3, k4=dihedral.k4
+            #     )
+            #     dihedral_set.add(
+            #         (dihedral.idx, dihedral.k1, dihedral.k2, dihedral.k3, dihedral.k4)
+            #     )
+    if len(opls_dihedral_set) > 0:
+        with open(name + "dihedrals.csv", "w") as file:
+            writer = csv.writer(file)
+            for dihedral in opls_dihedral_set:
+                writer.writerow(
+                    # [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
+                    dihedral
+                )
+        return opls_dihedral_bonding
+    elif len(cbt_dihedral_set) > 0:
+        with open(name + "dihedrals.csv", "w") as file:
+            writer = csv.writer(file)
+            for dihedral in cbt_dihedral_set:
+                writer.writerow(
+                    # [dihedral[0], dihedral[1], dihedral[2], dihedral[3], dihedral[4]]
+                    dihedral
+                )
+        return cbt_dihedral_bonding
+    # return dihedral_bonding
 
 def init_improper_dihedrals(contents, name):
     """
@@ -356,22 +421,48 @@ def read_angles(angle_path):
 
 def read_dihedrals(dihedral_path):
     """
-    read the angled potentials of all angles present in simulation
+    read the dihedral potentials of all angles present in simulation
     according to the Martini3 specifications
 
     Args:
       dihedral_path (string): path to dihedral.csv file.
 
     Returns:
-      hoomd.md.diheadral.Periodic: Contains all dihedrals present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedrals present in simulation.
+      OR
+      hoomd.azplugins.dihedral.BendingTorsion
     """
-    dihedral_bonding = hoomd.md.dihedral.OPLS()
     with open(dihedral_path, "r") as file:
         reader = csv.reader(file)
+        #find out what type of dihedrals to use based only on the length of the first line
         for row in reader:
-            dihedral_bonding.params[str(row[0])] = dict(
-                k1=row[1], k2=row[2], k3=row[3], k4=row[4]
-            )
+            if len(row) - 1 == 6:
+                print("initializing a hoomd.azplugins.dihedral.BendingTorsion object")
+                dihedral_bonding = hoomd.azplugins.dihedral.BendingTorsion()
+            elif len(row) - 1 == 4:
+                print("initializing a hoomd.md.dihedral.OPLS object")
+                dihedral_bonding = hoomd.md.dihedral.OPLS()
+            else:
+                print("ERROR in force_fields.py 1")
+                exit(2)
+            break
+    
+    with open(dihedral_path, "r") as file:
+        reader = csv.reader(file)
+        #parameterize the dihedral types in the hoomd dihedral object made above
+        for row in reader:
+            #6 parameters for CBT
+            if len(row) - 1 == 6:
+                dihedral_bonding.params[str(row[0])] = dict(
+                    k_phi=row[1],a0=row[2],a1=row[3],
+                    a2=row[4],a3=row[5],a4=row[6])
+            elif len(row) - 1 == 4: #4 parameters for OPLS
+                dihedral_bonding.params[str(row[0])] = dict(
+                    k1=row[1], k2=row[2], k3=row[3], k4=row[4]
+                )
+            else:
+                print("ERROR in force_fields.py 2")
+                exit(3)
     return dihedral_bonding
 
 def read_improper_dihedrals(improper_dihedral_path):
@@ -420,7 +511,7 @@ def make_rigid():
     return rigid
 
 
-def init_all_potentials(types, contents, name, pair_on):
+def init_all_potentials(types, contents, name, pair_on, return_dpd=False):
     """
     initialize all potentials using functions written above. also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
 
@@ -429,15 +520,18 @@ def init_all_potentials(types, contents, name, pair_on):
       contents (list of molecules): List of all molecules in simulation.
       name (string): Path to file where csv's are stored
       pair_on (bool): if pair_on = false, do not compute the pair potentials (saves a few seconds if not needed)
+      return_dpd (bool): if True, will also return a hoomd.md.pair.DPD
+                    potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
       hoomd.md.pair.ReactionField: Contains all Coulomb pair potentials present in simulation.
-      hoomd.md.bond.Harmonic: Contains all bond  potentials present in simulation.
-      hoomd.md.angle.Harmonic: Contains angle dihedral  potentials present in simulation.
-      hoomd.md.dihedral.OPLS: Contains all ddihedral  potentials present in simulation.
-      hoomd.md.improper.Harmonic: Contains all improper  potentials present in simulation.
-      hoomd.md.constrain.Rigid: Contains all improper  potentials present in simulation.
+      hoomd.md.bond.Harmonic: Contains all bond potentials present in simulation.
+      hoomd.md.angle.Harmonic: Contains angle potentials present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedral potentials present in simulation.
+      hoomd.md.improper.Harmonic: Contains all improper potentials present in simulation.
+      hoomd.md.constrain.Rigid: Contains all improper potentials present in simulation.
+      hoomd.md.pair.DPD: Contains all DPD pair potentials present in simulation, based on LJ parameters.
 
     """
     cell = hoomd.md.nlist.Cell(buffer=0.4,exclusions = ('bond','body'))
@@ -452,25 +546,33 @@ def init_all_potentials(types, contents, name, pair_on):
     dihedral_bonding = init_dihedrals(contents, name)
     improper_dihedral_bonding = init_improper_dihedrals(contents, name)
     rigid = make_rigid()
-    return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
+    if (return_dpd):
+        dpd = init_dpd_potentials(types,cell)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid,dpd
+    else:
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
 
 
-def forces_from_gsd(path, gsd_name):
+def forces_from_gsd(path, gsd_name, return_dpd=False):
     """
-    initialize all potentials using functions written above. also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
+    initialize all potentials using functions written above.
+    also makes bond.csv, angle.csv, etc. so the simulation can be started from a gsd.
 
     Args:
-      path (string): path to tfile where the gsd is
-      gsd_name (string): gsd file ame
+      path (string): path to file where the gsd is
+      gsd_name (string): gsd file name
+      return_dpd (bool): if True, will also return a hoomd.md.pair.DPD
+                    potential. Defaults to False. Useful when relaxing a high energy and/or random state
 
     Returns:
       hoomd.md.pair.LJ: Contains all LJ pair potentials present in simulation.
       hoomd.md.pair.ReactionField: Contains all Coulomb pair potentials present in simulation.
-      hoomd.md.bond.Harmonic: Contains all bond  potentials present in simulation.
-      hoomd.md.angle.Harmonic: Contains angle dihedral  potentials present in simulation.
-      hoomd.md.dihedral.OPLS: Contains all ddihedral  potentials present in simulation.
-      hoomd.md.improper.Harmonic: Contains all improper  potentials present in simulation.
-      hoomd.md.constrain.Rigid: Contains all improper  potentials present in simulation.
+      hoomd.md.bond.Harmonic: Contains all bond potentials present in simulation.
+      hoomd.md.angle.Harmonic: Contains angle potentials present in simulation.
+      hoomd.md.dihedral.OPLS: Contains all dihedral potentials present in simulation.
+      hoomd.md.improper.Harmonic: Contains all improper potentials present in simulation.
+      hoomd.md.constrain.Rigid: Contains all improper potentials present in simulation.
+      hoomd.md.pair.DPD: Contains all DPD pair potentials present in simulation, based on LJ parameters.
     """
     gsd_path = path + gsd_name
     bonds_path = path + "bonds.csv"
@@ -489,5 +591,8 @@ def forces_from_gsd(path, gsd_name):
     dihedral_bonding = read_dihedrals(dihedrals_path)
     improper_dihedral_bonding = read_improper_dihedrals(improper_dihedrals_path)
     rigid = make_rigid()
-
-    return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid
+    if (return_dpd):
+        dpd = init_dpd_potentials(particle_types,cell)
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid,dpd
+    else:
+        return lj, coulomb, bond_harmonic, angle_bonding, dihedral_bonding,improper_dihedral_bonding,rigid

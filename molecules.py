@@ -5,7 +5,7 @@ from martini3 import polymers
 import numpy as np
 
 script_path = os.path.abspath(__file__)
-root = script_path.split("/martini3")[0]
+root = script_path.split("/programs")[0]
 
 
 class Bond:
@@ -160,7 +160,7 @@ class Contents:
         self.current_index = [0, 0, 0, 0,0,0] # 0 = bead index, 1 = bond index, 2 = angle index, 3 = dihedral index, 4 = improper index, 5 = body index
 
     def add_molecule(self, molecule):
-        for bead in molecule.types:
+        for bead in molecule.bead_types:
             if bead not in self.bead_types:
                 self.bead_types.append(bead)
         molecule_len = len(molecule.id)
@@ -198,8 +198,8 @@ class Molecule:
     def __init__(self, name, molecule_beads, molecule_bonds, contents,rigid_bodies = None):
         if molecule_beads == "W":
             self.id = [contents.current_index[0]]
-            self.types = ["W"]
-            self.position = [[0.0, 0.0, 0.0]]
+            self.bead_types = ["W"]
+            self.positions = [[0.0, 0.0, 0.0]]
             self.bonds = []
             self.angles = []
             self.dihedrals = []
@@ -211,8 +211,8 @@ class Molecule:
             self.moment_inertia = [[0,0,0]]
         elif molecule_beads == "Q5-":
             self.id = [contents.current_index[0]]
-            self.types = ["Q5"]
-            self.position = [[0.0, 0.0, 0.0]]
+            self.bead_types = ["Q5"]
+            self.positions = [[0.0, 0.0, 0.0]]
             self.bonds = []
             self.angles = []
             self.dihedrals = []
@@ -224,8 +224,8 @@ class Molecule:
             self.moment_inertia = [[0,0,0]]
         elif molecule_beads == "Q5+":
             self.id = [contents.current_index[0]]
-            self.types = ["Q5"]
-            self.position = [[0.0, 0.0, 0.0]]
+            self.bead_types = ["Q5"]
+            self.positions = [[0.0, 0.0, 0.0]]
             self.bonds = []
             self.angles = []
             self.dihedrals = []            
@@ -244,8 +244,8 @@ class Molecule:
             ##TODO: Think about generalizing this to any body though I don't forsee it being needed
             if name == "cholesterol":
                 self.id =  idx
-                self.types = bead_types
-                self.position = positions
+                self.bead_types = bead_types
+                self.positions = positions
                 self.bonds = bonds
                 self.angles = angles
                 self.dihedrals = dihedrals
@@ -259,8 +259,8 @@ class Molecule:
                 self.moment_inertia = [[63.07779361300712, 67.88855195275258, 10.147523004966846]]+ ([[0,0,0]]*((len(idx)-1)))
             else:
                 self.id = idx
-                self.types = bead_types
-                self.position = positions
+                self.bead_types = bead_types
+                self.positions = positions
                 self.bonds = bonds
                 self.angles = angles
                 self.dihedrals = dihedrals
@@ -272,14 +272,14 @@ class Molecule:
                 self.moment_inertia = [[0,0,0]]*len(charges)
 
     def shift_positions(self, x_shift, y_shift, z_shift):
-        for position in self.position:
+        for position in self.positions:
             position[0] = position[0] + x_shift
             position[1] = position[1] + y_shift
             position[2] = position[2] + z_shift
 
     def invert_positions(self, is_inverted):
         if is_inverted == True:
-            for position in self.position:
+            for position in self.positions:
                 position[0] = position[0]
                 position[1] = -position[1]
                 position[2] = -position[2]
@@ -289,15 +289,49 @@ class Molecule:
             self.orientation = orientations    
 
     def rotate(self, theta):
-        for position in self.position:
+        for position in self.positions:
             x = position[0] * np.cos(theta) - position[1] * np.sin(theta)
             y = position[0] * np.sin(theta) + position[1] * np.cos(theta)
             position[0] = x
             position[1] = y
             position[2] = position[2]
 
+    def rotate3D(self,alpha,beta,gamma):
+        import math
+        sin_a = math.sin(alpha)
+        cos_a = math.cos(alpha)
+        sin_b = math.sin(beta)
+        cos_b = math.cos(beta)
+        sin_g = math.sin(gamma)
+        cos_g = math.cos(gamma)
+        # yaw = np.array([[cos_a, -sin_a, 0],
+        #                 [sin_a, cos_a,  0],
+        #                 [0,     0,      1]])
+        # pitch = np.array([[cos_b,  0, sin_b],
+        #                   [0,      1,     0],
+        #                   [-sin_b, 0, cos_b]])
+        # roll = np.array([[1, 0,          0],
+        #                  [0, cos_g, -sin_g],
+        #                  [0, sin_g,  cos_g]])
+        # rotation_matrix = np.matmul(yaw,np.matmul(pitch,roll))
+        rotation_matrix = np.zeros((3,3))
+        rotation_matrix[0,0] = cos_a*cos_a
+        rotation_matrix[0,1] = cos_a*sin_b*sin_g - sin_a*cos_g
+        rotation_matrix[0,2] = cos_a*sin_b*cos_g + sin_a*sin_g
+
+        rotation_matrix[1,0] = sin_a*cos_b
+        rotation_matrix[1,1] = sin_a*sin_b*sin_g + cos_a*cos_g
+        rotation_matrix[1,2] = sin_a*sin_b*cos_g - cos_a*sin_g
+
+        rotation_matrix[2,0] = -sin_b
+        rotation_matrix[2,1] = cos_b*sin_g
+        rotation_matrix[2,2] = cos_b*cos_g
+
+        for i,position in enumerate(self.positions):
+            self.positions[i] = np.matmul(position,rotation_matrix)
+
     def expand(self, expansion):
-        for position in self.position:
+        for position in self.positions:
             position[0] = position[0] * expansion
             position[1] = position[1] * expansion
             position[2] = position[2] * expansion
@@ -546,15 +580,15 @@ def extract_bonds(name, molecule_bonds, contents):
 
 
 def path_to_beads(name):
-    beads = root + "/martini3/molecules/" + name + "_bead.csv"
-    bonds = root + "/martini3/molecules/" + name + "_bonds.csv"
+    beads = root + "/programs/martini3/molecules/" + name + "_bead.csv"
+    bonds = root + "/programs/martini3/molecules/" + name + "_bonds.csv"
     return beads, bonds
 
 #Instead of writing pydocs for all the add molecules and make molecules I will write a big comment.
 
 #add_MOLECULE makes a molecule and adds it to contents for you. 
 #make_MOLECULE makes a molecule and returns said molecule.
-    #THis is useful if you want to see if a molecule will fit in a given place before adding it
+    #This is useful if you want to see if a molecule will fit in a given place before adding it
 
 def add_DOPC(
     contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
@@ -644,6 +678,26 @@ def add_cyclohexane(contents, x_shift, y_shift, z_shift):
     contents.add_molecule(cyclohexane)
     return contents
 
+def make_azobenzene(contents, x_shift, y_shift, z_shift, alpha, beta, gamma):
+    bead_path, bond_path = path_to_beads("Azobenzene")
+    azobenzene = Molecule("Azobenzene", bead_path, bond_path, contents)
+    # print("initial:" ,azobenzene.position)
+    azobenzene.rotate3D(alpha,beta,gamma)
+    # print("after rotate:",azobenzene.position)
+    azobenzene.shift_positions(x_shift, y_shift, z_shift)
+    # print("after shift:", azobenzene.position)
+    return azobenzene
+
+def add_azobenzene(contents, x_shift, y_shift, z_shift, alpha, beta, gamma):
+    bead_path, bond_path = path_to_beads("Azobenzene")
+    azobenzene = Molecule("Azobenzene", bead_path, bond_path, contents)
+    # print("initial:" ,azobenzene.position)
+    azobenzene.rotate3D(alpha,beta,gamma)
+    # print("after rotate:",azobenzene.position)
+    azobenzene.shift_positions(x_shift, y_shift, z_shift)
+    # print("after shift:", azobenzene.position)
+    contents.add_molecule(azobenzene)
+    return contents
 
 def add_PEO(contents, repeats, x_shift=0, y_shift=0, z_shift=0):
     name = "PEO" + str(repeats)
@@ -726,11 +780,15 @@ def make_seq_def(
     is_inverted=False,
     bond_angle=None,
 ):
+    print("Make_seq_def entered")
     name_polym= "seq_" + name_a + "_"+ name_b + "_" + str(id)
     bead_path, bond_path = path_to_beads(name_polym)
+    print("bead_path: ", bead_path)
+    print("bond_path: ", bond_path)
     if not os.path.isfile(bead_path):
+        print("isfile entered")
         polymers.make_sequence(
-            name_a,name_b,seq,id,bond_angle=bond_angle
+            name_list=[name_a,name_b],sequence=seq,id=id,bond_angle=bond_angle,
         )
         
     polym = Molecule(seq, bead_path, bond_path, contents)
