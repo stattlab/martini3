@@ -590,6 +590,13 @@ def path_to_beads(name):
 #make_MOLECULE makes a molecule and returns said molecule.
     #This is useful if you want to see if a molecule will fit in a given place before adding it
 
+def make_molecule(name, contents, x_shift, y_shift, z_shift, alpha, beta, gamma):
+    bead_path, bond_path = path_to_beads(name=name)
+    molecule = Molecule(name, bead_path, bond_path, contents)
+    molecule.rotate3D(alpha,beta,gamma)
+    molecule.shift_positions(x_shift, y_shift, z_shift)
+    return molecule
+
 def add_DOPC(
     contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
 ):
