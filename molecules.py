@@ -79,30 +79,33 @@ def quaternion_multiply(quaternion1, quaternion0):
                      x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0], dtype=np.float64)
 
 class Dihedral:
-    def __init__(self, bond_idx, bead_indices, k1, k2, k3, k4):
+    def __init__(self, bond_idx, bead_indices, param_dict):
         self.idx = bond_idx
         self.bead_indices = bead_indices  # dihedrals have 4 beads
-        self.k1 = k1
-        self.k2 = k2
-        self.k3 = k3
-        self.k4 = k4
+        self.param_dict = param_dict
+        # self.k1 = k1
+        # self.k2 = k2
+        # self.k3 = k3
+        # self.k4 = k4
 
     def update_idx(self, new_idx):
         self.idx = new_idx
 
     def __eq__(self, other):
         if other != None:
-            return (self.k1, self.k2, self.k3, self.k4) == (
-                other.k1,
-                other.k2,
-                other.k3,
-                other.k4,
-            )
+            return self.param_dict == other.param_dict
+            # return (self.k1, self.k2, self.k3, self.k4) == (
+            #     other.k1,
+            #     other.k2,
+            #     other.k3,
+            #     other.k4,
+            # )
         else:
             return False
 
     def __hash__(self):
-        return hash((self.k1, self.k2, self.k3, self.k4))
+        return hash(self.param_dict.values())
+        # return hash((self.k1, self.k2, self.k3, self.k4))
 
     def find_existing_dihedral(self, dihedral_list):
         for dihedral in dihedral_list:
@@ -464,6 +467,25 @@ def extract_bonds(name, molecule_bonds, contents):
                             test_improper_dihedral.update_idx(existing_improper_dihedral.idx)
                             improper_dihedrals.append(test_improper_dihedral)
                     else:
+                        if len(row) == 8: # OPLS dihedral
+                            param_dict = {
+                                'k1':row[4],
+                                'k2':row[5],
+                                'k3':row[6],
+                                'k4':row[7],
+                            }
+                        elif len(row) == 10: #Assuming Combined-Bending Torsion potential
+                            param_dict = {
+                                'k_phi' : row[4],
+                                'a0': row[5],
+                                'a1': row[6],
+                                'a2': row[7],
+                                'a3': row[8],
+                                'a4': row[9],
+                            }
+                        else:
+                            print("error: unknown dihedral type in molecules.py")
+                            exit(2)
                         test_dihedral = Dihedral(
                             dihedral_idx,
                             [
@@ -472,10 +494,7 @@ def extract_bonds(name, molecule_bonds, contents):
                                 str(int(row[2]) + current_index[0]),
                                 str(int(row[3]) + current_index[0]),
                             ],
-                            row[4],
-                            row[5],
-                            row[6],
-                            row[7],
+                            param_dict=param_dict,
                         )
                         existing_dihedral = test_dihedral.find_existing_dihedral(dihedrals)
                         if existing_dihedral == None:
@@ -556,6 +575,25 @@ def extract_bonds(name, molecule_bonds, contents):
                             improper_dihedrals.append(test_improper_dihedral)
 
                 elif dihedral_idx != None:
+                    if len(row) == 8: # OPLS dihedral
+                        param_dict = {
+                            'k1':row[4],
+                            'k2':row[5],
+                            'k3':row[6],
+                            'k4':row[7],
+                        }
+                    elif len(row) == 10: #Assuming Combined-Bending Torsion potential
+                        param_dict = {
+                            'k_phi' : row[4],
+                            'a0': row[5],
+                            'a1': row[6],
+                            'a2': row[7],
+                            'a3': row[8],
+                            'a4': row[9],
+                        }
+                    else:
+                        print("error: unknown dihedral type in molecules.py")
+                        exit(2)
                     test_dihedral = Dihedral(
                         dihedral_idx,
                         [
@@ -564,10 +602,7 @@ def extract_bonds(name, molecule_bonds, contents):
                             str(int(row[2]) + current_index[0]),
                             str(int(row[3]) + current_index[0]),
                         ],
-                        row[4],
-                        row[5],
-                        row[6],
-                        row[7],
+                        param_dict=param_dict,
                     )
                     existing_dihedral = test_dihedral.find_existing_dihedral(dihedrals)
                     if existing_dihedral == None:
