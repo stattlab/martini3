@@ -301,20 +301,17 @@ def make_bonds(name, csv_name_bonds, repeats, block=(False, None), a_block_repea
                 writer.writerow(
                     [
                         str(
-                            i
-                            + 1
+                            i+adj
                             + a_block_repeats
                             + int(reader[end_beads + num_bonds + 1][0])
                         ),
                         str(
-                            i
-                            + 1
+                            i+adj
                             + a_block_repeats
                             + int(reader[end_beads + num_bonds + 1][1])
                         ),
                         str(
-                            i
-                            + 1
+                            i+adj
                             + a_block_repeats
                             + int(reader[end_beads + num_bonds + 1][2])
                         ),
@@ -985,12 +982,15 @@ def make_sequence(name_a,name_b,sequence, id,bond_angle=None):
         
         name_s = name(seq[0],name_a,name_b)
         fin_pos = get_finpos(csv_names[0])
-
         if number_beads_in_csv-num_beads_per_monomer>0 and pos == "second" and len(seq)==1:
             adj = num_beads_per_monomer
         else:
             adj = 0
         # a_block_repeats has a -1 to account for the missing head group on PEO
+        if number_beads_in_csv-num_beads_per_monomer>0 and pos == "second" and len(split_seq[i:]) ==1:
+            adj_2 = num_beads_per_monomer
+        else:
+            adj_2 = 0
 
         block_bonds(name_block, csv_names[1], beads_places-1,angles_off=True)
         a2_on = False if len(split_seq[i:]) ==1 and len(seq)==1 and number_beads_in_csv == 1 else True

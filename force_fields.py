@@ -1,7 +1,6 @@
 import hoomd
 
 # from particles import Particle
-from martini3 import q_adj
 from martini3 import particles
 import numpy as np
 import csv
@@ -27,128 +26,11 @@ def init_lj_potentials(types, cell):
             particle_a = types[i]
             particle_b = types[j]
 
-            # Adjust for Q bead interactions if one of the beads is Q
-            if (particle_a.lj_params[particle_b.name][0] !=0) and "Q" in (particle_a.name) and "Q" not in (particle_b.name):
-                if q_adj.eps_b.get(particle_b.name) != None:
-                    eps_b = q_adj.eps_b.get(particle_b.name)
-                    b_size = "R"
-                else:
-                    if q_adj.eps_b.get(particle_b.name[0:2]) != None:
-                        b_size = "R"
-                        eps_b = q_adj.eps_b.get(particle_b.name[0:2])
-                    elif q_adj.eps_b.get(particle_b.name[1:3]) != None:
-                        b_size = particle_b.name[0]
-                        eps_b = q_adj.eps_b.get(particle_b.name[1:3])
-                    else:
-                        print(
-                            "error lipid.py line 78 idk what would cause this case but writing this "
-                        )
-
-                # This line assumes that particle a is a Q bead and not a D bead and that it has no letter modifiers
-                if len(particle_a.name) > 2:
-                    a_size = particle_a.name[0]
-                    a_name = particle_a.name[1:3]
-                else:
-                    a_size = "R"
-                    a_name = particle_a.name
-
-                eps_qb = particle_a.lj_params[particle_b.name][1]
-                eps_w = q_adj.eps_b.get("W")
-                eps_c1 = q_adj.eps_b.get("C1")
-                gamma = q_adj.gamma.get(a_name).get(b_size)
-                eps_inside_w = q_adj.eps_w.get(a_name).get(b_size)
-                eps_inside_c1 = q_adj.eps_c1.get(a_name).get(b_size)
-                p_qb = q_adj.p_qb.get(a_size).get(b_size)
-
-                sigma_qw = particle_a.lj_params["W"][0]
-                sigma_qb = particle_a.lj_params[particle_b.name][0]
-
-                eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
-                    eps_inside_c1 - eps_inside_w
-                )
-
-                eps_final = (
-                    eps_qb
-                    + p_qb
-                    * gamma
-                    * sigma_qw
-                    / sigma_qb
-                    * eps_w
-                    * eps_inside_w
-                    / eps_b
-                    / eps_b_inside
-                    * (eps_b - eps_b_inside)
-                    / (eps_w - eps_inside_w)
-                )
-
-                lj.params[(particle_a.name, particle_b.name)] = dict(
-                    epsilon=eps_final, sigma=particle_a.lj_params[particle_b.name][0]
-                )
-                lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
-            elif (particle_a.lj_params[particle_b.name][0] !=0)  and "Q" not in (particle_a.name) and "Q" in (particle_b.name):
-                if q_adj.eps_b.get(particle_a.name) != None:
-                    eps_b = q_adj.eps_b.get(particle_a.name)
-                    a_size = "R"
-                else:
-                    if q_adj.eps_b.get(particle_a.name[0:2]) != None:
-                        a_size = "R"
-                        eps_b = q_adj.eps_b.get(particle_a.name[0:2])
-                    elif q_adj.eps_b.get(particle_a.name[1:3]) != None:
-                        a_size = particle_a.name[0]
-                        eps_b = q_adj.eps_b.get(particle_a.name[1:3])
-                    else:
-                        print(
-                            "error lipid.py line 78 idk what would cause this case but writing this "
-                        )
-
-                # This line assumes that particle b is a Q bead and not a D bead
-                # this also assumes Q beads have no name modifiers
-                if len(particle_b.name) > 2:
-                    b_size = particle_b.name[0]
-                    b_name = particle_b.name[1:3]
-                else:
-                    b_size = "R"
-                    b_name = particle_b.name
-
-                eps_qb = particle_b.lj_params[particle_a.name][1]
-                eps_w = q_adj.eps_b.get("W")
-                eps_c1 = q_adj.eps_b.get("C1")
-                gamma = q_adj.gamma.get(b_name).get(a_size)
-                eps_inside_w = q_adj.eps_w.get(b_name).get(a_size)
-                eps_inside_c1 = q_adj.eps_c1.get(b_name).get(a_size)
-                p_qb = q_adj.p_qb.get(b_size).get(a_size)
-
-                sigma_qw = particle_b.lj_params["W"][0]
-                sigma_qb = particle_b.lj_params[particle_a.name][0]
-
-                eps_b_inside = eps_inside_w + (eps_b - eps_w) / (eps_c1 - eps_w) * (
-                    eps_inside_c1 - eps_inside_w
-                )
-
-                eps_final = (
-                    eps_qb
-                    + p_qb
-                    * gamma
-                    * sigma_qw
-                    / sigma_qb
-                    * eps_w
-                    * eps_inside_w
-                    / eps_b
-                    / eps_b_inside
-                    * (eps_b - eps_b_inside)
-                    / (eps_w - eps_inside_w)
-                )
-
-                lj.params[(particle_a.name, particle_b.name)] = dict(
-                    epsilon=eps_final, sigma=particle_a.lj_params[particle_b.name][0]
-                )
-                lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
-            else:
-                lj.params[(particle_a.name, particle_b.name)] = dict(
-                    epsilon=particle_a.lj_params[particle_b.name][1],
-                    sigma=particle_a.lj_params[particle_b.name][0],
-                )
-                lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
+            lj.params[(particle_a.name, particle_b.name)] = dict(
+                epsilon=particle_a.lj_params[particle_b.name][1],
+                sigma=particle_a.lj_params[particle_b.name][0],
+            )
+            lj.r_cut[(particle_a.name, particle_b.name)] = 1.1  # nm
     return lj
 
 

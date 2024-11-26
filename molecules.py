@@ -607,6 +607,81 @@ def make_DPPC(
     return DPPC
 
 
+def add_DOPE(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DOPE")
+    DOPE = Molecule("DOPE", bead_path, bond_path, contents)
+    DOPE.expand(expansion)
+    DOPE.rotate(theta)
+    DOPE.shift_positions(x_shift, y_shift, z_shift)
+    DOPE.invert_positions(is_inverted)
+    contents.add_molecule(DOPE)
+    return contents
+
+
+def make_DOPE(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DOPE")
+    DOPE = Molecule("DOPE", bead_path, bond_path, contents)
+    DOPE.expand(expansion)
+    DOPE.rotate(theta)
+    DOPE.shift_positions(x_shift, y_shift, z_shift)
+    DOPE.invert_positions(is_inverted)
+    return DOPE
+
+def add_DLPC(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DLPC")
+    DLPC = Molecule("DLPC", bead_path, bond_path, contents)
+    DLPC.expand(expansion)
+    DLPC.rotate(theta)
+    DLPC.shift_positions(x_shift, y_shift, z_shift)
+    DLPC.invert_positions(is_inverted)
+    contents.add_molecule(DLPC)
+    return contents
+
+
+def make_DLPC(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DLPC")
+    DLPC = Molecule("DLPC", bead_path, bond_path, contents)
+    DLPC.expand(expansion)
+    DLPC.rotate(theta)
+    DLPC.shift_positions(x_shift, y_shift, z_shift)
+    DLPC.invert_positions(is_inverted)
+    return DLPC
+
+
+def add_DPPE(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DPPE")
+    DPPE = Molecule("DPPE", bead_path, bond_path, contents)
+    DPPE.expand(expansion)
+    DPPE.rotate(theta)
+    DPPE.shift_positions(x_shift, y_shift, z_shift)
+    DPPE.invert_positions(is_inverted)
+    contents.add_molecule(DPPE)
+
+    return contents
+
+
+def make_DPPE(
+    contents, x_shift=0, y_shift=0, z_shift=0, is_inverted=False, expansion=1, theta=0
+):
+    bead_path, bond_path = path_to_beads("DPPE")
+    DPPE = Molecule("DPPE", bead_path, bond_path, contents)
+    DPPE.expand(expansion)
+    DPPE.rotate(theta)
+    DPPE.shift_positions(x_shift, y_shift, z_shift)
+    DPPE.invert_positions(is_inverted)
+    return DPPE
+
+
 
 def add_water(contents, x_shift, y_shift, z_shift):
     water = Molecule("W", "W", "", contents)

@@ -1,3 +1,5 @@
+Updated November 7th
+
 Martini for HOOMD: 
 
 My implementation to streamline initializing a simulation parameterized with the Martini CG force field.
@@ -39,9 +41,6 @@ molecules.py
 - Create molecule type - everything hoomd needs to run
 - Creates contents, which is a list of molecules that keeps track of how many angles and bonds were added and prevents duplicate bonds from being added.
 - Has functions to add specific molecules to contents.
-
-q_adj.py
-- Martini wants us to change the LJ potentials if beads are interacting with charged beads. This holds the parameters that define how that shift happens. This is handled in particles.py
 
 polymers.py
 - For polymers that I have needed, create _bonds and _bead.csv's for polymers given number of repeats, sequences, block-copolymers, slabs, etc.
