@@ -1,10 +1,10 @@
-Updated November 7th
+Updated November 26th
 
 Martini for HOOMD: 
 
 My implementation to streamline initializing a simulation parameterized with the Martini CG force field.
 
-This works as a python package. Use conda develop -u path to add it to your conda environment
+This works as a python package. Export to your python path
 
 Usage for Simulation:
 1. Initialize contents
@@ -17,7 +17,7 @@ Usage for Development:
 Adding molecules:
 1. Add _bead.csv and _bonds.csv in martini the same format as they are implemented (note: bead is 1 indexed and bonds in 0 indexed)
 2. Write add_*/make_* molecule to molecules.py following the given format 
-3. Kaboom
+3. Ready to use!
 
 Adding polymers:
 1. Be smart. Polymers.py constructs the _bead.csv and _bonds.csv for several types of polymers which I have had to code. Either work from that or make your own script to do this.
@@ -37,7 +37,7 @@ particles.py
 - Initialize leonard jones interactions across particle types and masses
 
 molecules.py
-- Creates bond/angles/rigid bodies/dihedral/whatever types 
+- Creates bond/angles/rigid bodies/dihedral/whatever types  -- dihedral types are not tested
 - Create molecule type - everything hoomd needs to run
 - Creates contents, which is a list of molecules that keeps track of how many angles and bonds were added and prevents duplicate bonds from being added.
 - Has functions to add specific molecules to contents.
