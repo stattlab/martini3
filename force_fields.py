@@ -60,7 +60,7 @@ def init_coulomb_potentials(types, cell):
 
             if "Q" in (name_i) and "Q" in (name_j):
                 coulomb.params[(name_i, name_j)] = dict(
-                    epsilon=138.935458, eps_rf=eps_r, use_charge=True
+                    epsilon=138.935458/eps_r, eps_rf=eps_r, use_charge=True
                 )
             else:
                 coulomb.params[(name_i, name_j)] = dict(epsilon=0, eps_rf=eps_r)
